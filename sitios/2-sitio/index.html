@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MobileNet Image Classifier</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@1.0.0"></script>
+  <style>
+    h1 {
+      display: flex;
+      justify-content: center;
+    }
+    #results {
+      margin-top: 20px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      max-width: 300px;
+      overflow-wrap: break-word;
+      display: none; /* Ocultar resultados inicialmente */
+    }
+  </style>
+</head>
+<body>
+  <h1>MobileNet Image Classifier</h1>
+  <input type="file" id="imageInput" accept="image/*">
+  <button onclick="classifyImage()">Classify Image</button>
+  <div id="results"></div>
+
+  <script>
+    async function classifyImage() {
+      const imgElement = document.getElementById('imageInput');
+      const img = imgElement.files[0];
+      const resultsDiv = document.getElementById('results');
+
+      if (img) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          const imgData = e.target.result;
+          const imgElement = document.createElement('img'); // Crear un elemento de imagen
+          imgElement.src = imgData; // Asignar la imagen cargada al elemento de imagen
+          
+          imgElement.onload = async function() {
+            const model = await mobilenet.load();
+            const predictions = await model.classify(imgElement);
+
+            // Mostrar resultados en la interfaz
+            resultsDiv.innerHTML = '<h2>Results:</h2>';
+            predictions.forEach(prediction => {
+              resultsDiv.innerHTML += `<p>${prediction.className}: ${Math.round(prediction.probability * 100)}%</p>`;
+            });
+
+            resultsDiv.style.display = 'block'; // Mostrar resultados
+            console.log(predictions);
+          };
+        };
+        reader.readAsDataURL(img);
+      } else {
+        alert('Please select an image file.');
+      }
+    }
+  </script>
+</body>
+</html>

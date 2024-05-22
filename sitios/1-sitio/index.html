@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #f0f0f0;
+      }
+
+      h1 {
+        color: #333;
+      }
+
+      .board {
+        display: grid;
+        grid-template-columns: repeat(3, 100px);
+        grid-template-rows: repeat(3, 100px);
+        gap: 5px;
+      }
+
+      .cell {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2em;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        cursor: pointer;
+      }
+
+      .cell.x {
+        color: #f00;
+      }
+
+      .cell.o {
+        color: #00f;
+      }
+
+      .message {
+        margin-top: 20px;
+        font-size: 1.2em;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tic Tac Toe</h1>
+    <div class="board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+    <div class="message"></div>
+    <script>
+      tf.ready().then(() => {
+        const modelPath = 'model/ttt_model.json';
+        tf.tidy(() => {
+          tf.loadLayersModel(modelPath).then((model) => {
+            let board = tf.zeros([9]).arraySync();
+            let currentPlayer = -1; // User starts
+
+            const cells = document.querySelectorAll('.cell');
+            const messageDiv = document.querySelector('.message');
+
+            function renderBoard() {
+              cells.forEach((cell, idx) => {
+                if (board[idx] === 1) {
+                  cell.textContent = 'O';
+                  cell.classList.add('o');
+                } else if (board[idx] === -1) {
+                  cell.textContent = 'X';
+                  cell.classList.add('x');
+                } else {
+                  cell.textContent = '';
+                  cell.classList.remove('x', 'o');
+                }
+              });
+            }
+
+            function checkWinner(board) {
+              const winningCombinations = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+                [0, 4, 8], [2, 4, 6]             // Diagonals
+              ];
+
+              for (const combo of winningCombinations) {
+                const [a, b, c] = combo;
+                if (board[a] !== 0 && board[a] === board[b] && board[a] === board[c]) {
+                  return board[a];
+                }
+              }
+
+              return board.includes(0) ? null : 'Draw';
+            }
+
+            function aiMove(board) {
+              const boardTensor = tf.tensor(board);
+              const result = model.predict(boardTensor.reshape([1, 9]));
+              const probabilities = result.dataSync();
+              let maxProb = -Infinity;
+              let move = -1;
+
+              probabilities.forEach((prob, idx) => {
+                if (board[idx] === 0 && prob > maxProb) {
+                  maxProb = prob;
+                  move = idx;
+                }
+              });
+
+              return move;
+            }
+
+            function userMove(position) {
+              if (board[position] === 0) {
+                board[position] = -1; // User move
+                renderBoard();
+                let winner = checkWinner(board);
+                if (winner !== null) {
+                  messageDiv.textContent = winner === 'Draw' ? 'The game is a draw!' : `Player ${winner === 1 ? 'O' : 'X'} wins!`;
+                  return;
+                }
+
+                const aiPosition = aiMove(board);
+                board[aiPosition] = 1; // AI move
+                renderBoard();
+                console.log("AI moved to position:", aiPosition);
+                console.log("Current board:", board);
+
+                winner = checkWinner(board);
+                if (winner !== null) {
+                  messageDiv.textContent = winner === 'Draw' ? 'The game is a draw!' : `Player ${winner === 1 ? 'O' : 'X'} wins!`;
+                }
+              }
+            }
+
+            cells.forEach(cell => {
+              cell.addEventListener('click', () => {
+                const index = parseInt(cell.getAttribute('data-index'));
+                userMove(index);
+              });
+            });
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
